@@ -250,7 +250,7 @@ Item {
                         readonly property bool isDot: modelData.kind === "dot"
 
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 1
+                        spacing: Style.spacingXXS
 
                         Item {
                             anchors.verticalCenter: parent.verticalCenter
@@ -277,8 +277,10 @@ Item {
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: marker.modelData.count >= 0
+                            height: root.taskMarkerSize
+                            verticalAlignment: Text.AlignVCenter
                             text: marker.modelData.count
-                            font.pixelSize: Style.fontSizeSmall
+                            font.pixelSize: root.taskMarkerSize
                             font.weight: Style.fontWeightMedium
                             color: cell.isSelected ? Style.onPrimary : Style.surfaceVariantText
                         }
