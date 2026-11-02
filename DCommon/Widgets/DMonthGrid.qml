@@ -13,8 +13,11 @@ Item {
     property var dayNames: []
     property bool showWeekNumbers: false
     property var weekNumberFor: null
+    // Returns the day's markers: a color draws a dot; {color, kind} with kind
+    // "task" or "taskDone" draws an empty or checked box.
     property var dotColorsFor: null
     property int maxDots: 3
+    property real taskMarkerSize: Style.spacingS + Style.spacingXXS
     property int revision: 0
     property bool interactive: true
     property real cellGap: Style.spacingXS
@@ -209,14 +212,32 @@ Item {
                 Repeater {
                     model: cell.dotColors.slice(0, root.maxDots)
 
-                    Rectangle {
+                    Item {
+                        id: marker
+
                         required property var modelData
+                        readonly property string kind: modelData?.kind ?? "dot"
+                        readonly property color markerColor: kind === "dot" ? modelData : (modelData.color ?? Style.primary)
 
                         anchors.verticalCenter: parent.verticalCenter
-                        width: Style.spacingXS
-                        height: Style.spacingXS
-                        radius: Style.fullRadius(width, height)
-                        color: modelData
+                        width: kind === "dot" ? Style.spacingXS : root.taskMarkerSize
+                        height: width
+
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: marker.kind === "dot"
+                            radius: Style.fullRadius(width, height)
+                            color: marker.markerColor
+                        }
+
+                        DIcon {
+                            anchors.centerIn: parent
+                            visible: marker.kind !== "dot"
+                            name: marker.kind === "taskDone" ? "check_box" : "check_box_outline_blank"
+                            size: root.taskMarkerSize
+                            filled: marker.kind === "taskDone"
+                            color: marker.markerColor
+                        }
                     }
                 }
 
