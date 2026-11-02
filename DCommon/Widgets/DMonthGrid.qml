@@ -17,6 +17,8 @@ Item {
     // "task" or "taskDone" draws an empty or checked box.
     property var dotColorsFor: null
     property int maxDots: 3
+    // One marker per kind with its count, instead of one marker per entry.
+    property bool countMarkers: false
     property real taskMarkerSize: Style.spacingS + Style.spacingXXS
     property int revision: 0
     property bool interactive: true
@@ -28,6 +30,34 @@ Item {
     property color weekendColor: Style.tertiary
 
     signal dayClicked(date date)
+
+    readonly property var markerKinds: ["dot", "task", "taskDone"]
+
+    function normalizeMarker(entry) {
+        const kind = entry?.kind ?? "dot";
+        return {
+            "kind": kind,
+            "color": kind === "dot" ? entry : (entry.color ?? Style.primary),
+            "count": -1
+        };
+    }
+
+    function groupMarkers(entries) {
+        const groups = [];
+        for (const entry of entries) {
+            const marker = normalizeMarker(entry);
+            const group = groups.find(g => g.kind === marker.kind);
+            if (!group) {
+                marker.count = 1;
+                groups.push(marker);
+            } else {
+                group.count++;
+                if (!Qt.colorEqual(group.color, marker.color))
+                    group.color = Style.primary;
+            }
+        }
+        return groups.sort((a, b) => markerKinds.indexOf(a.kind) - markerKinds.indexOf(b.kind));
+    }
 
     readonly property int columns: 7
     readonly property int rows: 6
@@ -164,7 +194,8 @@ Item {
                 root.revision;
                 return root.dotColorsFor ? (root.dotColorsFor(dayDate) ?? []) : [];
             }
-            readonly property int extraCount: Math.max(0, dotColors.length - root.maxDots)
+            readonly property var markers: root.countMarkers ? root.groupMarkers(dotColors) : dotColors.slice(0, root.maxDots).map(root.normalizeMarker)
+            readonly property int extraCount: root.countMarkers ? 0 : Math.max(0, dotColors.length - root.maxDots)
 
             x: mirrored ? root.width - root.gridLeft - (index % root.columns) * (root.cellWidth + root.cellGap) - width : root.gridLeft + (index % root.columns) * (root.cellWidth + root.cellGap)
             y: root.weekdayRowHeight + root.cellGap + Math.floor(index / root.columns) * (root.cellHeight + root.cellGap)
@@ -206,37 +237,50 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottomMargin: Style.spacingXS
-                spacing: Style.spacingXXS
-                visible: cell.dotColors.length > 0
+                spacing: root.countMarkers ? Style.spacingXS : Style.spacingXXS
+                visible: cell.markers.length > 0
 
                 Repeater {
-                    model: cell.dotColors.slice(0, root.maxDots)
+                    model: cell.markers
 
-                    Item {
+                    Row {
                         id: marker
 
                         required property var modelData
-                        readonly property string kind: modelData?.kind ?? "dot"
-                        readonly property color markerColor: kind === "dot" ? modelData : (modelData.color ?? Style.primary)
+                        readonly property bool isDot: modelData.kind === "dot"
 
                         anchors.verticalCenter: parent.verticalCenter
-                        width: kind === "dot" ? Style.spacingXS : root.taskMarkerSize
-                        height: width
+                        spacing: 1
 
-                        Rectangle {
-                            anchors.fill: parent
-                            visible: marker.kind === "dot"
-                            radius: Style.fullRadius(width, height)
-                            color: marker.markerColor
+                        Item {
+                            anchors.verticalCenter: parent.verticalCenter
+                            // Material glyphs pad their box; size the slot to the drawn box.
+                            width: marker.isDot ? Style.spacingXS : Math.round(root.taskMarkerSize * 0.8)
+                            height: marker.isDot ? Style.spacingXS : root.taskMarkerSize
+
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: marker.isDot
+                                radius: Style.fullRadius(width, height)
+                                color: marker.modelData.color
+                            }
+
+                            DIcon {
+                                anchors.centerIn: parent
+                                visible: !marker.isDot
+                                name: marker.modelData.kind === "taskDone" ? "check_box" : "check_box_outline_blank"
+                                size: root.taskMarkerSize
+                                color: marker.modelData.color
+                            }
                         }
 
-                        DIcon {
-                            anchors.centerIn: parent
-                            visible: marker.kind !== "dot"
-                            name: marker.kind === "taskDone" ? "check_box" : "check_box_outline_blank"
-                            size: root.taskMarkerSize
-                            filled: marker.kind === "taskDone"
-                            color: marker.markerColor
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: marker.modelData.count >= 0
+                            text: marker.modelData.count
+                            font.pixelSize: Style.fontSizeSmall
+                            font.weight: Style.fontWeightMedium
+                            color: cell.isSelected ? Style.onPrimary : Style.surfaceVariantText
                         }
                     }
                 }
