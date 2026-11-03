@@ -248,6 +248,8 @@ Item {
 
                         required property var modelData
                         readonly property bool isDot: modelData.kind === "dot"
+                        // Calendar colors can vanish against the selected cell's fill.
+                        readonly property color markerColor: cell.isSelected ? Style.onPrimary : modelData.color
 
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: Style.spacingXXS
@@ -262,7 +264,7 @@ Item {
                                 anchors.fill: parent
                                 visible: marker.isDot
                                 radius: Style.fullRadius(width, height)
-                                color: marker.modelData.color
+                                color: marker.markerColor
                             }
 
                             DIcon {
@@ -270,7 +272,7 @@ Item {
                                 visible: !marker.isDot
                                 name: marker.modelData.kind === "taskDone" ? "check_box" : "check_box_outline_blank"
                                 size: root.taskMarkerSize
-                                color: marker.modelData.color
+                                color: marker.markerColor
                             }
                         }
 
